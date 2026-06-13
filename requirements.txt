@@ -1,0 +1,25 @@
+# Aesthetic Darkroom — dependencies
+# Developed against a CUDA GPU environment (Kaggle dual-T4). Install a matching
+# torch build for your CUDA version first (https://pytorch.org/get-started/locally/).
+
+torch
+diffusers
+transformers
+accelerate
+xformers
+diffusers[torch]
+
+# scoring panel
+aesthetic-predictor-v2-5
+pyiqa                       # NIMA, MUSIQ, CLIP-IQA
+onnxruntime                 # optional anime scorer (skytnt/anime-aesthetic)
+
+# image + utilities
+Pillow
+opencv-contrib-python-headless   # contrib build ships cv2.saliency (local tools)
+numpy
+pandas
+tabulate
+einops
+huggingface_hub
+requests
