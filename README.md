@@ -144,6 +144,6 @@ Not for finishing your posters. It's a working demonstration of a specific, impo
 
 ## License
 
-[MIT](LICENSE) © David Adeshina
+[MIT](LICENSE) © Suzume
 
 *An exploration of LLM-as-art-director: reasoning, decision-making, and the stubborn distance between a score and something worth looking at.*
