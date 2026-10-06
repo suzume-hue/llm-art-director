@@ -27,7 +27,7 @@ Each round:
 1. **Score** the current image with a panel of aesthetic models, then translate the raw numbers into plain language. The model reasons over sentences ("overall appeal: weak — your clearest opportunity"), never a table of floats.
 2. **Reason and propose.** A vision LLM looks at the real image, names the weakness it actually *sees*, and proposes two or three competing edits.
 3. **Verify by doing.** Every proposal, plus automatic strength variants, is applied and re-scored. The best one that clears the gate is kept. Ideas are tested, not trusted.
-4. **Judge.** A human-preference model compares the new state against the last approved one. If the numbers went up but a person would prefer the old version, the edit is **rolled back**.
+4. **Judge.** A human-preference model (the pretrained PickScore) compares the new state against the last approved one. If the numbers went up but a person would prefer the old version, the edit is **rolled back**.
 
 That last step is the heart of the project, and it took ten versions to get right.
 
@@ -47,7 +47,7 @@ This did not work for most of its life. The version history is the interesting p
 
 **v9 — the trap.** Added scorers actually trained on the image style. Composite shot up from 0.30 to 0.72. It looked like success. It wasn't: the model had discovered that cranking a vignette to maximum spiked the score, and the "best" result was a crushed, dark, ugly frame. The metric loved it. A human wouldn't.
 
-**v10 — the judge was dead the whole time.** The anti-gaming guard meant to catch exactly the v9 failure had been returning `None` on every call since v7, silently doing nothing, because a model class quietly changed under it. A smoke test surfaced it. Once fixed, the human-preference judge finally fired on every step, rolled back the gaming, and — for the first time — confirmed a result that beat its source. This is the version this repository ships.
+**v10 — the judge was dead the whole time.** The anti-gaming guard meant to catch exactly the v9 failure had been returning `None` on every call since v7, silently doing nothing, because a model class quietly changed under it. A smoke test surfaced it. Once fixed, the human-preference judge finally fired on every step and rolled back the gaming, and the final source-vs-best check (a Gemini A/B) — for the first time — confirmed a result that beat its source. This is the version this repository ships.
 
 **v11–v12 — the pivot.** A fair objection arrived: editing a fixed frame "feels nothing like art, it's just touching it up." So the project flipped. Instead of refining a given image, the model would *paint* one from a prompt, then branch into a tree of variations, deciding at each node whether to repaint or to retouch, and return a small gallery of finished works. That branch is its own line of work and lives elsewhere; this repo is the editor, kept whole.
 
@@ -55,15 +55,15 @@ This did not work for most of its life. The version history is the interesting p
 
 ## The lesson: metric vs. masterpiece
 
-Here is a run on a quiet, sombre frame — a figure with their face buried in their arms. Eighteen accepted edits, the composite climbing the whole way:
+Here is a run on a quiet, sombre frame — a figure with their face buried in their arms. Fifteen accepted edits, the composite creeping up from 0.386 to 0.419 — unevenly, with plenty of dips on the way:
 
 ![the exploration of one frame](assets/run-recolour-evolution.png)
 
-| The model's "best" | What the judge said |
+| The model's "best" | The scores, then the final check |
 |---|---|
-| ![recoloured result](assets/run-recolour-final.png) | composite **0.42 → 0.50** ✅ … final verdict: **source-preferred** ❌ |
+| ![recoloured result](assets/run-recolour-final.png) | composite **0.386 → 0.419** ✅ … final verdict: **source-preferred** ❌ |
 
-The composite score rose by a healthy margin. The per-metric panel agreed it was "better." Then the independent human-preference judge looked at the original and the result side by side and said, plainly, that the *original* was the better picture.
+The composite score rose, and the anime scorer rose with it (0.23 → 0.26), though the illustration scorer fell (0.88 → 0.52). Then the final check — a Gemini A/B comparison, run in both orderings — looked at the original and the result side by side and said, plainly, that the *original* was the better picture.
 
 That disagreement is the whole project in one line. **Optimise any fixed measure of beauty hard enough and a model will find the cheap exploit that satisfies the measure while betraying the intent.** Oversharpening. Oversaturation. A heavy recolour into electric blue. A vignette cranked to black. Every guard in this codebase — the held-out validator, the semantic-drift gate, the per-metric weight cap, and above all the preference judge that can overrule the score — exists because an earlier version got caught doing precisely this.
 
@@ -81,7 +81,7 @@ The most useful result here is arguably a negative one: a small, reproducible de
                             └──────────── repeat N rounds ──────┘
 ```
 
-- **Eyes** — Aesthetic Predictor v2.5, NIMA, MUSIQ, the LAION predictor, CLIP-IQA (held out), and PickScore as the judge. Optional illustration scorers for non-photographic input.
+- **Eyes** — Aesthetic Predictor v2.5, NIMA, MUSIQ, the LAION predictor, CLIP-IQA (held out), and PickScore (Kirstain et al.'s pretrained human-preference model, used as-is) as the judge. Optional illustration scorers for non-photographic input.
 - **Hands** — parametric edits (exposure, contrast, curves, colour, clarity, grain, vignette, split-toning…), saliency-masked *local* edits (subject vs. background), and a structure-preserving generative editor (CosXL) for bold recolour/relight the dials can't reach. It edits the image; it never redraws it.
 - **Brain** — a Gemini vision model as the artist, a Groq model as the blind critic, over plain REST with key rotation and an auto-ranked model roster that fails over on errors.
 - **Conscience** — the four guards above.
@@ -124,7 +124,7 @@ This section is the point. The project has real, structural problems, and preten
 
 *A movie poster after refinement. The credits at the bottom are gone to soup; the title has lost its edges. The composite score was happy.*
 
-**It often makes things worse.** Said plainly: more than once the "best" output by the system's own composite was judged worse than the original — by the human-preference model *and* by eye. A rising number frequently meant a degrading image. The sombre-portrait run earlier is exactly this: score up, picture worse.
+**It often makes things worse.** Said plainly: more than once the "best" output by the system's own composite was judged worse than the original — by the final Gemini A/B check *or* by eye. A rising number frequently meant a degrading image. The sombre-portrait run earlier is exactly this: score up, picture worse.
 
 **It games whatever you measure it by.** This is the defining flaw, not a footnote. Oversharpen, oversaturate, recolour everything electric blue, crush a vignette to black — the loop finds whatever cheap trick the metric rewards. The guards catch a lot. They do not catch all of it.
 
